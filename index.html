@@ -4,12 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1B1740">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <title>Ruleta del Amigo Secreto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
     --night: #1B1740;
     --night-2: #262058;
     --violet: #6C4AE8;
@@ -126,8 +130,9 @@
   input[type=text], input[type=password], textarea {
     width: 100%; font: inherit; font-size: 1.15rem; font-weight: 600;
     padding: 14px 16px; border-radius: 14px; border: 2px solid rgba(255,247,236,.18);
-    background: rgba(27,23,64,.7); color: var(--cream);
+    background: rgba(27,23,64,.7); color: var(--cream); -webkit-appearance: none; appearance: none;
   }
+  input:-webkit-autofill, input:-webkit-autofill:focus { -webkit-text-fill-color: var(--cream); -webkit-box-shadow: 0 0 0 1000px #221c50 inset; }
   input::placeholder, textarea::placeholder { color: rgba(255,247,236,.35); font-weight: 500; }
   input:focus, textarea:focus { border-color: var(--sun); }
 
@@ -271,7 +276,7 @@
     </div>
     <div class="card">
       <label for="nameInput">Tu nombre</label>
-      <input type="text" id="nameInput" placeholder="Como te registró el administrador" autocomplete="off" autocapitalize="words" enterkeyhint="go">
+      <input type="text" id="nameInput" autocomplete="off" autocapitalize="words" enterkeyhint="go">
       <button class="btn" id="playBtn">Jugar</button>
       <div class="msg" id="homeMsg"></div>
     </div>
@@ -453,12 +458,21 @@
       cx.save(); cx.translate(R, R); cx.rotate(a0 + seg / 2);
       cx.textAlign = 'right'; cx.textBaseline = 'middle';
       cx.fillStyle = '#1B1740';
+      // El texto termina antes del puntero (que tapa ~70px) y empieza después del centro.
+      const outer = R - 72, inner = R * 0.3, maxW = outer - inner;
       let size = Math.min(52, Math.max(22, 1000 / (n + 4)));
-      cx.font = `700 ${size}px Fredoka, Nunito, sans-serif`;
       let label = wheelNames[i];
-      const maxW = R * 0.62;
+      const setFont = () => { cx.font = `700 ${size}px Fredoka, Nunito, sans-serif`; };
+      setFont();
+      // Reducir el tamaño hasta que quepa a lo largo y a lo alto del segmento.
+      for (let k = 0; k < 40; k++) {
+        const w = cx.measureText(label).width;
+        const arcAtStart = (2 * Math.PI * Math.max(inner, outer - w)) / n;
+        if ((w <= maxW && size <= arcAtStart * 1.1) || size <= 16) break;
+        size -= 1; setFont();
+      }
       while (cx.measureText(label).width > maxW && label.length > 3) label = label.slice(0, -2).trimEnd() + '…';
-      cx.fillText(label, R - 34, 0);
+      cx.fillText(label, outer, 0);
       cx.restore();
     }
     // Brillo sutil
