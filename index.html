@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#1B1740">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
-<meta name="app-version" content="mttgebv2">
+<meta name="app-version" content="mttgl06v">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -349,7 +349,7 @@
   // ---------------- Versión y caché ----------------
   // Si en el servidor hay una versión más nueva, la página se recarga sola con una URL fresca
   // para saltarse la caché del navegador. Solo lo intenta una vez por versión para evitar bucles.
-  const APP_VERSION = 'mttgebv2';
+  const APP_VERSION = 'mttgl06v';
   async function checkVersion() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -411,13 +411,19 @@
     state.updatedAt = Date.now();
     cacheLocal();
     const content = JSON.stringify([{ tag: 'p', children: [JSON.stringify(state)] }]);
-    const body = new URLSearchParams({ access_token: TG_TOKEN, title: TG_TITLE, content });
-    // Formulario simple: no necesita preflight CORS.
-    const r = await fetch(TG_API + 'editPage/' + TG_PATH, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || 'error');
-    return true;
+    // Reintenta con espera creciente: Telegraph limita ediciones muy seguidas.
+    let lastErr = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      if (attempt) await sleep(700 * Math.pow(2, attempt - 1));
+      try {
+        const body = new URLSearchParams({ access_token: TG_TOKEN, title: TG_TITLE, content });
+        const r = await fetch(TG_API + 'editPage/' + TG_PATH, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+        const j = await r.json();
+        if (j.ok) return true;
+        lastErr = new Error(j.error || ('HTTP ' + r.status));
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('sin conexión');
   }
 
   // ---------------- Lógica del juego ----------------
@@ -624,8 +630,8 @@
     if (again) {
       // El resultado solo se muestra una vez. Al volver a entrar no se revela.
       $('resultEyebrow').textContent = 'Ya giraste la ruleta';
-      $('resultName').textContent = '';
-      reveal.hidden = true;
+      $('resultName').textContent = '🔒';
+      reveal.hidden = false;
       note.textContent = 'Tu amigo secreto se mostró una sola vez y debías guardarlo. Si no lo recuerdas, pídele al administrador que reinicie tu giro.';
     } else {
       $('resultEyebrow').textContent = 'Tu amigo secreto es';
