@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#1B1740">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
+<meta name="app-version" content="mttfn8x7">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Ruleta del Amigo Secreto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -336,6 +340,32 @@
 <script>
 (() => {
   'use strict';
+
+  // ---------------- Versión y caché ----------------
+  // Si en el servidor hay una versión más nueva, la página se recarga sola con una URL fresca
+  // para saltarse la caché del navegador. Solo lo intenta una vez por versión para evitar bucles.
+  const APP_VERSION = 0;
+  async function checkVersion() {
+    try {
+      const r = await fetch(version.json?t= + Date.now(), { cache: no-store });
+      if (!r.ok) return;
+      const { v } = await r.json();
+      if (v && v !== APP_VERSION) {
+        const key = reloadedFor: + v;
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, 1);
+          location.replace(location.pathname + ?v= + encodeURIComponent(v));
+        }
+      } else if (location.search.indexOf(?v=) === 0) {
+        history.replaceState(null, , location.pathname);
+      }
+    } catch (e) {}
+  }
+  checkVersion();
+  document.addEventListener(visibilitychange, () => {
+    const home = document.getElementById(s-home);
+    if (!document.hidden && home && home.classList.contains(active)) checkVersion();
+  });
 
   // ---------------- Configuración ----------------
   const ADMIN_PIN = '1234';
