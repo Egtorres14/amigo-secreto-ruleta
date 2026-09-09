@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#1B1740">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
-<meta name="app-version" content="mttfsjbv">
+<meta name="app-version" content="mttgebv2">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -212,6 +212,9 @@
   .list li .st { margin-left: auto; font-size: .82rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255,247,236,.08); color: rgba(255, 247, 236, 0.62); white-space: nowrap; }
   .list li .st.done { background: rgba(61,220,180,.16); color: #3DDCB4; }
   .list li .del { border: none; background: none; color: #FF5C7A; font-size: 1.2rem; cursor: pointer; padding: 4px 6px; border-radius: 8px; }
+  .list li .redo { border: none; background: rgba(61,220,180,.14); color: #3DDCB4; font-size: 1.15rem; cursor: pointer; padding: 4px 9px; border-radius: 8px; }
+  .list li .st b { color: #FFF7EC; font-weight: 800; }
+  .list li { flex-wrap: wrap; }
   .list li .del:disabled { opacity: .3; cursor: not-allowed; }
   .stats { display: flex; gap: 10px; margin: 16px 0 4px; }
   .stat { flex: 1; text-align: center; padding: 12px; border-radius: 16px; background: rgba(255,247,236,.06); }
@@ -331,6 +334,7 @@
         <div class="stat"><b id="stDone">0</b><span>ya giraron</span></div>
         <div class="stat"><b id="stLeft">0</b><span>faltan</span></div>
       </div>
+      <button class="btn secondary" id="toggleResults" style="margin-top:12px;font-size:1.05rem;padding:12px 18px;">Ver a quién le tocó a cada uno</button>
       <ul class="list" id="pList"></ul>
     </div>
     <button class="btn danger" id="resetBtn">Reiniciar el juego</button>
@@ -345,7 +349,7 @@
   // ---------------- Versión y caché ----------------
   // Si en el servidor hay una versión más nueva, la página se recarga sola con una URL fresca
   // para saltarse la caché del navegador. Solo lo intenta una vez por versión para evitar bucles.
-  const APP_VERSION = 'mttfsjbv';
+  const APP_VERSION = 'mttgebv2';
   async function checkVersion() {
     try {
       const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -370,7 +374,11 @@
 
   // ---------------- Configuración ----------------
   const ADMIN_PIN = '1234';
-  const STORE_URL = 'https://api.restful-api.dev/objects/ff808181a067127101a083b948fc4f57';
+  // Almacén compartido: una página de Telegraph (api.telegra.ph) que guarda el estado como JSON.
+  const TG_API = 'https://api.telegra.ph/';
+  const TG_PATH = 'rs-c8df3513e58d-09-09';
+  const TG_TITLE = 'rs-c8df3513e58d';
+  const TG_TOKEN = '374db76e719b38291bf5d1198e65c6145d1b0edac6204d317a67d2e2a6ac';
   const LS_KEY = 'amigoSecretoState';
   const COLORS = ['#FF5C7A', '#FFC94D', '#3DDCB4', '#6C4AE8', '#FF8C5A', '#5AC8FF', '#F26BC2', '#9BE55A'];
 
@@ -389,10 +397,12 @@
   function loadLocal() { try { const s = JSON.parse(localStorage.getItem(LS_KEY)); if (s && s.participants) state = s; } catch (e) {} }
 
   async function fetchState() {
-    const r = await fetch(STORE_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    const r = await fetch(TG_API + 'getPage/' + TG_PATH + '?return_content=true&t=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
-    const d = (j && j.data) || {};
+    if (!j.ok) throw new Error(j.error || 'error');
+    let d = {};
+    try { d = JSON.parse(((j.result.content || [])[0] || {}).children[0] || '{}'); } catch (e) { d = {}; }
     state = { participants: Array.isArray(d.participants) ? d.participants : [], assignments: d.assignments || {}, updatedAt: d.updatedAt || 0 };
     cacheLocal();
     return state;
@@ -400,8 +410,13 @@
   async function saveState() {
     state.updatedAt = Date.now();
     cacheLocal();
-    const r = await fetch(STORE_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'amigo-secreto-ruleta', data: state }) });
+    const content = JSON.stringify([{ tag: 'p', children: [JSON.stringify(state)] }]);
+    const body = new URLSearchParams({ access_token: TG_TOKEN, title: TG_TITLE, content });
+    // Formulario simple: no necesita preflight CORS.
+    const r = await fetch(TG_API + 'editPage/' + TG_PATH, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
     if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'error');
     return true;
   }
 
@@ -604,8 +619,20 @@
   }
 
   function showResult(name, again) {
-    $('resultEyebrow').textContent = again ? 'Ya giraste antes. Tu amigo secreto es' : 'Tu amigo secreto es';
-    $('resultName').textContent = name;
+    const reveal = document.querySelector('#s-result .reveal');
+    const note = document.querySelector('#s-result p.note');
+    if (again) {
+      // El resultado solo se muestra una vez. Al volver a entrar no se revela.
+      $('resultEyebrow').textContent = 'Ya giraste la ruleta';
+      $('resultName').textContent = '';
+      reveal.hidden = true;
+      note.textContent = 'Tu amigo secreto se mostró una sola vez y debías guardarlo. Si no lo recuerdas, pídele al administrador que reinicie tu giro.';
+    } else {
+      $('resultEyebrow').textContent = 'Tu amigo secreto es';
+      $('resultName').textContent = name;
+      reveal.hidden = false;
+      note.textContent = 'Guárdalo bien. Solo se muestra esta vez y no se puede volver a girar.';
+    }
     show('s-result');
     if (!again) { sFanfare(); confetti(); }
   }
@@ -617,14 +644,28 @@
     $('stTotal').textContent = state.participants.length; $('stDone').textContent = done; $('stLeft').textContent = state.participants.length - done;
     if (!state.participants.length) { list.innerHTML = '<li class="empty" style="display:block">Todavía no hay participantes. Agrega el primero arriba.</li>'; return; }
     const taken = new Set(Object.values(state.assignments));
+    $('toggleResults').textContent = showResults ? 'Ocultar resultados' : 'Ver a quién le tocó a cada uno';
     state.participants.forEach(p => {
       const li = document.createElement('li');
       const played = p in state.assignments;
       const locked = played || taken.has(p);
-      li.innerHTML = `<span>${escapeHtml(p)}</span><span class="st ${played ? 'done' : ''}">${played ? 'Ya giró' : 'Pendiente'}</span><button class="del" title="${locked ? 'No se puede quitar: ya participa en una asignación' : 'Quitar'}" aria-label="Quitar" ${locked ? 'disabled' : ''}>✕</button>`;
+      const status = played ? (showResults ? `Le tocó <b>${escapeHtml(state.assignments[p])}</b>` : 'Ya giró') : 'Pendiente';
+      li.innerHTML = `<span>${escapeHtml(p)}</span><span class="st ${played ? 'done' : ''}">${status}</span>`
+        + (played ? `<button class="redo" title="Reiniciar el giro de ${escapeHtml(p)}" aria-label="Reiniciar giro">↺</button>` : '')
+        + `<button class="del" title="${locked ? 'No se puede quitar: ya participa en una asignación' : 'Quitar'}" aria-label="Quitar" ${locked ? 'disabled' : ''}>✕</button>`;
       li.querySelector('.del').addEventListener('click', () => removeParticipant(p));
+      const redo = li.querySelector('.redo'); if (redo) redo.addEventListener('click', () => resetOne(p));
       list.appendChild(li);
     });
+  }
+  let showResults = false;
+  $('toggleResults').addEventListener('click', () => { showResults = !showResults; sClick(); renderAdmin(); });
+  async function resetOne(p) {
+    const r = state.assignments[p];
+    if (!confirm(`¿Reiniciar el giro de ${p}? Podrá girar otra vez y ${r} vuelve a estar disponible en la ruleta.`)) return;
+    delete state.assignments[p];
+    renderAdmin();
+    await persistAdmin(`Giro de ${p} reiniciado.`);
   }
   const escapeHtml = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
