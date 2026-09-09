@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1B1740">
+<title>Ruleta del Amigo Secreto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #1B1740;
+    --night-2: #262058;
+    --violet: #6C4AE8;
+    --coral: #FF5C7A;
+    --sun: #FFC94D;
+    --mint: #3DDCB4;
+    --cream: #FFF7EC;
+    --cream-dim: rgba(255, 247, 236, 0.62);
+    --ring: rgba(255, 201, 77, 0.55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    background: var(--night);
+    color: var(--cream);
+    overflow-x: hidden;
+    min-height: 100dvh;
+    background-image:
+      radial-gradient(60vw 60vw at 12% -10%, rgba(108, 74, 232, 0.45), transparent 60%),
+      radial-gradient(50vw 50vw at 100% 110%, rgba(255, 92, 122, 0.30), transparent 60%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, .display { font-family: 'Fredoka', 'Nunito', sans-serif; }
+
+  /* Confetti dots background */
+  .bg-dots {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .55;
+    background-image:
+      radial-gradient(circle, var(--sun) 2px, transparent 2.5px),
+      radial-gradient(circle, var(--mint) 2px, transparent 2.5px),
+      radial-gradient(circle, var(--coral) 2px, transparent 2.5px);
+    background-size: 210px 210px, 170px 170px, 260px 260px;
+    background-position: 20px 40px, 90px 120px, 160px 30px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent 70%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), transparent 70%);
+  }
+
+  .app {
+    position: relative; z-index: 1;
+    max-width: 520px; margin: 0 auto;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+  }
+
+  .top {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 10px;
+  }
+  .brand { font-family: 'Fredoka'; font-weight: 600; font-size: 1.05rem; letter-spacing: .01em; color: var(--cream-dim); }
+  .icon-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: 2px solid rgba(255,247,236,.18);
+    background: rgba(255,247,236,.06); color: var(--cream); font-size: 1.1rem; cursor: pointer;
+    display: grid; place-items: center; transition: transform .15s, background .2s;
+  }
+  .icon-btn:hover { background: rgba(255,247,236,.14); }
+  .icon-btn:active { transform: scale(.94); }
+  .icon-btn:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
+
+  .screen { display: none; flex: 1; flex-direction: column; animation: pop .35s cubic-bezier(.2,.9,.3,1.2); }
+  .screen.active { display: flex; }
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Home ---------- */
+  .hero { text-align: center; margin: 4vh 0 3vh; }
+  .hero h1 {
+    font-size: clamp(2.4rem, 11vw, 3.6rem); line-height: .95; font-weight: 700;
+    background: linear-gradient(120deg, var(--sun), var(--coral) 55%, var(--violet));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 6px 24px rgba(255, 92, 122, .25));
+  }
+  .hero p { margin-top: 12px; color: var(--cream-dim); font-size: 1.05rem; line-height: 1.5; max-width: 34ch; margin-inline: auto; }
+
+  .mini-wheel {
+    width: min(58vw, 230px); aspect-ratio: 1; margin: 0 auto 2.5vh; position: relative;
+    border-radius: 50%;
+    background: conic-gradient(var(--coral) 0 60deg, var(--sun) 0 120deg, var(--mint) 0 180deg, var(--violet) 0 240deg, #FF8C5A 0 300deg, #5AC8FF 0 360deg);
+    box-shadow: 0 0 0 8px var(--night-2), 0 0 0 10px rgba(255,247,236,.15), 0 20px 50px rgba(0,0,0,.45);
+    animation: slowspin 24s linear infinite;
+  }
+  .mini-wheel::after { content: ''; position: absolute; inset: 38%; border-radius: 50%; background: var(--night); box-shadow: inset 0 0 0 4px var(--cream); }
+  @keyframes slowspin { to { transform: rotate(360deg); } }
+
+  .card {
+    background: rgba(255,247,236,.06);
+    border: 1.5px solid rgba(255,247,236,.12);
+    border-radius: 24px; padding: 22px; backdrop-filter: blur(10px);
+  }
+  label { display: block; font-weight: 700; margin-bottom: 8px; font-size: .95rem; }
+  input[type=text], input[type=password], textarea {
+    width: 100%; font: inherit; font-size: 1.15rem; font-weight: 600;
+    padding: 14px 16px; border-radius: 14px; border: 2px solid rgba(255,247,236,.18);
+    background: rgba(27,23,64,.7); color: var(--cream);
+  }
+  input::placeholder, textarea::placeholder { color: rgba(255,247,236,.35); font-weight: 500; }
+  input:focus, textarea:focus { border-color: var(--sun); }
+
+  .btn {
+    font: inherit; font-family: 'Fredoka'; font-weight: 600; font-size: 1.25rem; letter-spacing: .01em;
+    width: 100%; padding: 16px 20px; border-radius: 999px; border: none; cursor: pointer;
+    color: var(--night); background: linear-gradient(120deg, var(--sun), #FF9A5A);
+    box-shadow: 0 10px 28px rgba(255, 201, 77, .32), inset 0 -3px 0 rgba(0,0,0,.14);
+    transition: transform .15s, box-shadow .2s, filter .2s; margin-top: 16px;
+  }
+  .btn:hover { filter: brightness(1.05); }
+  .btn:active { transform: translateY(2px) scale(.99); box-shadow: 0 5px 16px rgba(255,201,77,.25); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; filter: none; transform: none; }
+  .btn.secondary { background: rgba(255,247,236,.1); color: var(--cream); box-shadow: none; border: 2px solid rgba(255,247,236,.2); }
+  .btn.danger { background: linear-gradient(120deg, var(--coral), #FF3B5C); color: #fff; box-shadow: 0 10px 28px rgba(255,92,122,.3); }
+  .btn.spin { font-size: 1.5rem; padding: 18px; }
+
+  .msg { margin-top: 12px; font-weight: 700; min-height: 1.4em; font-size: .98rem; line-height: 1.4; }
+  .msg.err { color: var(--coral); }
+  .msg.ok { color: var(--mint); }
+  .msg.info { color: var(--cream-dim); font-weight: 600; }
+
+  .foot { margin-top: auto; padding-top: 24px; text-align: center; }
+  .link { background: none; border: none; color: var(--cream-dim); font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+  .link:hover { color: var(--cream); }
+
+  /* ---------- Wheel ---------- */
+  .wheel-head { text-align: center; margin: 2vh 0 1vh; }
+  .wheel-head h2 { font-size: clamp(1.5rem, 6.5vw, 2rem); font-weight: 600; }
+  .wheel-head h2 span { color: var(--sun); }
+  .wheel-head p { color: var(--cream-dim); margin-top: 6px; }
+
+  .wheel-wrap { position: relative; width: min(88vw, 400px); aspect-ratio: 1; margin: 12px auto 8px; }
+  .pointer {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 4;
+    width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent;
+    border-top: 40px solid var(--cream);
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.45));
+    transform-origin: 50% 0;
+  }
+  .pointer.kick { animation: kick .12s ease-out; }
+  @keyframes kick { 0% { transform: translateX(-50%) rotate(0); } 50% { transform: translateX(-50%) rotate(-14deg); } 100% { transform: translateX(-50%) rotate(0); } }
+  canvas#wheel {
+    width: 100%; height: 100%; border-radius: 50%; display: block;
+    box-shadow: 0 0 0 10px var(--night-2), 0 0 0 13px rgba(255,247,236,.16), 0 0 60px rgba(108,74,232,.45), 0 30px 60px rgba(0,0,0,.5);
+    transition: box-shadow .4s;
+  }
+  .wheel-wrap.spinning canvas#wheel { box-shadow: 0 0 0 10px var(--night-2), 0 0 0 13px var(--ring), 0 0 90px rgba(255,201,77,.4), 0 30px 60px rgba(0,0,0,.5); }
+  .hub {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 3;
+    width: 22%; aspect-ratio: 1; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, var(--cream) 40%, #E8D9C4);
+    box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 -3px 0 rgba(0,0,0,.1);
+    display: grid; place-items: center; font-size: clamp(1.6rem, 8vw, 2.6rem);
+  }
+
+  /* ---------- Result ---------- */
+  .result { text-align: center; margin: auto 0; }
+  .result .eyebrow { color: var(--cream-dim); font-weight: 700; font-size: 1.05rem; }
+  .reveal {
+    margin: 18px auto; padding: 30px 22px; border-radius: 28px; max-width: 400px;
+    background: linear-gradient(150deg, rgba(255,201,77,.22), rgba(255,92,122,.18) 60%, rgba(108,74,232,.28));
+    border: 2px solid rgba(255,201,77,.5);
+    box-shadow: 0 0 0 6px rgba(255,201,77,.08), 0 30px 60px rgba(0,0,0,.4);
+    animation: glow 2.4s ease-in-out infinite alternate;
+  }
+  @keyframes glow { from { box-shadow: 0 0 0 6px rgba(255,201,77,.08), 0 30px 60px rgba(0,0,0,.4); } to { box-shadow: 0 0 0 14px rgba(255,201,77,.04), 0 0 60px rgba(255,201,77,.35), 0 30px 60px rgba(0,0,0,.4); } }
+  .reveal .name { font-family: 'Fredoka'; font-weight: 700; font-size: clamp(2.2rem, 11vw, 3.4rem); line-height: 1.05; color: var(--sun); word-break: break-word; }
+  .result p.note { color: var(--cream-dim); line-height: 1.5; max-width: 34ch; margin: 0 auto; }
+
+  /* ---------- Admin ---------- */
+  .admin h2 { font-size: 1.7rem; margin-bottom: 4px; }
+  .admin .sub { color: var(--cream-dim); margin-bottom: 18px; }
+  .row { display: flex; gap: 10px; }
+  .row input { flex: 1; }
+  .row .btn { width: auto; margin: 0; padding: 12px 20px; font-size: 1.05rem; }
+  .list { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .list li {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 14px;
+    background: rgba(27,23,64,.6); border: 1.5px solid rgba(255,247,236,.1); font-weight: 700; font-size: 1.05rem;
+  }
+  .list li .st { margin-left: auto; font-size: .82rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255,247,236,.08); color: var(--cream-dim); white-space: nowrap; }
+  .list li .st.done { background: rgba(61,220,180,.16); color: var(--mint); }
+  .list li .del { border: none; background: none; color: var(--coral); font-size: 1.2rem; cursor: pointer; padding: 4px 6px; border-radius: 8px; }
+  .list li .del:disabled { opacity: .3; cursor: not-allowed; }
+  .stats { display: flex; gap: 10px; margin: 16px 0 4px; }
+  .stat { flex: 1; text-align: center; padding: 12px; border-radius: 16px; background: rgba(255,247,236,.06); }
+  .stat b { display: block; font-family: 'Fredoka'; font-size: 1.7rem; color: var(--sun); }
+  .stat span { font-size: .85rem; color: var(--cream-dim); font-weight: 700; }
+  .empty { color: var(--cream-dim); text-align: center; padding: 20px 0; line-height: 1.5; }
+
+  /* ---------- Overlay / confetti ---------- */
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0;
+    background: var(--cream); color: var(--night); font-weight: 800; padding: 12px 18px; border-radius: 999px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.4); transition: .3s; z-index: 60; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mini-wheel { animation: none; }
+    .reveal { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-dots"></div>
+<canvas id="confetti"></canvas>
+<div class="toast" id="toast"></div>
+
+<div class="app">
+  <div class="top">
+    <div class="brand">Amigo secreto</div>
+    <button class="icon-btn" id="muteBtn" title="Sonido" aria-label="Activar o silenciar sonido">🔊</button>
+  </div>
+
+  <!-- HOME -->
+  <section class="screen active" id="s-home">
+    <div class="hero">
+      <div class="mini-wheel" aria-hidden="true"></div>
+      <h1>Ruleta del<br>Amigo Secreto</h1>
+      <p>Escribe tu nombre, gira la ruleta y descubre a quién te toca regalar. Solo tú verás el resultado.</p>
+    </div>
+    <div class="card">
+      <label for="nameInput">Tu nombre</label>
+      <input type="text" id="nameInput" placeholder="Como te registró el administrador" autocomplete="off" autocapitalize="words" enterkeyhint="go">
+      <button class="btn" id="playBtn">Jugar</button>
+      <div class="msg" id="homeMsg"></div>
+    </div>
+    <div class="foot"><button class="link" id="adminLink">Soy el administrador</button></div>
+  </section>
+
+  <!-- WHEEL -->
+  <section class="screen" id="s-wheel">
+    <div class="wheel-head">
+      <h2>Hola, <span id="whoName"></span></h2>
+      <p id="wheelSub">Toca girar y deja que la suerte decida.</p>
+    </div>
+    <div class="wheel-wrap" id="wheelWrap">
+      <div class="pointer" id="pointer"></div>
+      <canvas id="wheel" width="800" height="800"></canvas>
+      <div class="hub">🎁</div>
+    </div>
+    <button class="btn spin" id="spinBtn">Girar la ruleta</button>
+    <div class="msg info" id="wheelMsg"></div>
+    <div class="foot"><button class="link" id="backHome">Volver</button></div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="s-result">
+    <div class="result">
+      <div class="eyebrow" id="resultEyebrow">Tu amigo secreto es</div>
+      <div class="reveal"><div class="name" id="resultName"></div></div>
+      <p class="note">Guárdalo bien. Este resultado quedó registrado y no se puede volver a girar.</p>
+      <button class="btn secondary" id="resultHome">Listo</button>
+    </div>
+  </section>
+
+  <!-- ADMIN LOGIN -->
+  <section class="screen" id="s-login">
+    <div class="card" style="margin: auto 0;">
+      <h2 class="display" style="font-size:1.6rem;margin-bottom:14px;">Acceso de administrador</h2>
+      <label for="pinInput">PIN</label>
+      <input type="password" id="pinInput" placeholder="Escribe el PIN" autocomplete="off" enterkeyhint="go">
+      <button class="btn" id="loginBtn">Entrar</button>
+      <div class="msg" id="loginMsg"></div>
+    </div>
+    <div class="foot"><button class="link" id="loginBack">Volver al juego</button></div>
+  </section>
+
+  <!-- ADMIN -->
+  <section class="screen admin" id="s-admin">
+    <h2>Participantes</h2>
+    <div class="sub">Agrega los nombres tal como los escribirán al jugar. Los resultados de cada persona son privados.</div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="newName" placeholder="Nombre" autocomplete="off" autocapitalize="words" enterkeyhint="done">
+        <button class="btn" id="addBtn">Agregar</button>
+      </div>
+      <div class="msg" id="adminMsg"></div>
+      <div class="stats">
+        <div class="stat"><b id="stTotal">0</b><span>participantes</span></div>
+        <div class="stat"><b id="stDone">0</b><span>ya giraron</span></div>
+        <div class="stat"><b id="stLeft">0</b><span>faltan</span></div>
+      </div>
+      <ul class="list" id="pList"></ul>
+    </div>
+    <button class="btn danger" id="resetBtn">Reiniciar el juego</button>
+    <div class="foot"><button class="link" id="adminBack">Salir del panel</button></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------------- Configuración ----------------
+  const ADMIN_PIN = 'Mateo0915';
+  const STORE_URL = 'https://api.restful-api.dev/objects/ff808181a067127101a083b948fc4f57';
+  const LS_KEY = 'amigoSecretoState';
+  const COLORS = ['#FF5C7A', '#FFC94D', '#3DDCB4', '#6C4AE8', '#FF8C5A', '#5AC8FF', '#F26BC2', '#9BE55A'];
+
+  // ---------------- Utilidades ----------------
+  const $ = id => document.getElementById(id);
+  const norm = s => (s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  let toastTimer;
+  const toast = (t) => { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); };
+  const setMsg = (id, text, kind) => { const el = $(id); el.textContent = text || ''; el.className = 'msg' + (kind ? ' ' + kind : ''); };
+
+  // ---------------- Estado / almacenamiento ----------------
+  let state = { participants: [], assignments: {}, updatedAt: 0 };
+
+  function cacheLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+  function loadLocal() { try { const s = JSON.parse(localStorage.getItem(LS_KEY)); if (s && s.participants) state = s; } catch (e) {} }
+
+  async function fetchState() {
+    const r = await fetch(STORE_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const d = (j && j.data) || {};
+    state = { participants: Array.isArray(d.participants) ? d.participants : [], assignments: d.assignments || {}, updatedAt: d.updatedAt || 0 };
+    cacheLocal();
+    return state;
+  }
+  async function saveState() {
+    state.updatedAt = Date.now();
+    cacheLocal();
+    const r = await fetch(STORE_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'amigo-secreto-ruleta', data: state }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return true;
+  }
+
+  // ---------------- Lógica del juego ----------------
+  const findParticipant = name => state.participants.find(p => norm(p) === norm(name));
+  const pendingGivers = () => state.participants.filter(p => !(p in state.assignments));
+  const availableReceivers = () => { const taken = new Set(Object.values(state.assignments)); return state.participants.filter(p => !taken.has(p)); };
+
+  // Opciones válidas para quien gira: no puede ser él mismo y no puede dejar al último sin opciones.
+  function validOptions(giver) {
+    const givers = pendingGivers().filter(g => g !== giver);
+    const receivers = availableReceivers().filter(r => r !== giver);
+    return receivers.filter(r => {
+      const restReceivers = receivers.filter(x => x !== r);
+      if (givers.length === 1 && restReceivers.length === 1 && givers[0] === restReceivers[0]) return false;
+      return true;
+    });
+  }
+
+  // ---------------- Sonido (Web Audio, sin archivos) ----------------
+  let audioCtx = null, muted = false;
+  try { muted = localStorage.getItem('amigoMuted') === '1'; } catch (e) {}
+  const updateMuteBtn = () => { $('muteBtn').textContent = muted ? '🔇' : '🔊'; };
+  updateMuteBtn();
+  function ctx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function tone(freq, dur, type = 'sine', gain = 0.2, when = 0, slideTo = null) {
+    if (muted) return;
+    const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, c.currentTime + when);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + when + dur);
+    g.gain.setValueAtTime(0.0001, c.currentTime + when);
+    g.gain.exponentialRampToValueAtTime(gain, c.currentTime + when + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + when + dur);
+    o.connect(g).connect(c.destination); o.start(c.currentTime + when); o.stop(c.currentTime + when + dur + 0.05);
+  }
+  const sTick = () => tone(1400 + Math.random() * 300, 0.045, 'square', 0.06);
+  const sClick = () => tone(600, 0.08, 'triangle', 0.15, 0, 300);
+  const sError = () => { tone(220, 0.18, 'sawtooth', 0.12); tone(160, 0.25, 'sawtooth', 0.12, 0.12); };
+  const sWhoosh = () => tone(200, 0.6, 'sine', 0.12, 0, 900);
+  function sFanfare() {
+    const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5];
+    notes.forEach((f, i) => { tone(f, 0.22, 'triangle', 0.18, i * 0.11); tone(f / 2, 0.3, 'sine', 0.1, i * 0.11); });
+    tone(1568, 0.9, 'triangle', 0.16, notes.length * 0.11);
+  }
+  $('muteBtn').addEventListener('click', () => { muted = !muted; try { localStorage.setItem('amigoMuted', muted ? '1' : '0'); } catch (e) {} updateMuteBtn(); if (!muted) sClick(); });
+
+  // ---------------- Navegación ----------------
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $(id).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ---------------- Ruleta (canvas) ----------------
+  const canvas = $('wheel'); const cx = canvas.getContext('2d');
+  let wheelNames = [], angle = 0, spinning = false;
+
+  function drawWheel(rot) {
+    const n = wheelNames.length; const W = canvas.width; const R = W / 2;
+    cx.clearRect(0, 0, W, W);
+    if (!n) return;
+    const seg = (Math.PI * 2) / n;
+    for (let i = 0; i < n; i++) {
+      const a0 = rot + i * seg, a1 = a0 + seg;
+      cx.beginPath(); cx.moveTo(R, R); cx.arc(R, R, R, a0, a1); cx.closePath();
+      cx.fillStyle = COLORS[i % COLORS.length];
+      if (n % COLORS.length === 1 && i === n - 1) cx.fillStyle = COLORS[(i + 3) % COLORS.length];
+      cx.fill();
+      cx.strokeStyle = 'rgba(27,23,64,.55)'; cx.lineWidth = 6; cx.stroke();
+      // Texto
+      cx.save(); cx.translate(R, R); cx.rotate(a0 + seg / 2);
+      cx.textAlign = 'right'; cx.textBaseline = 'middle';
+      cx.fillStyle = '#1B1740';
+      let size = Math.min(52, Math.max(22, 1000 / (n + 4)));
+      cx.font = `700 ${size}px Fredoka, Nunito, sans-serif`;
+      let label = wheelNames[i];
+      const maxW = R * 0.62;
+      while (cx.measureText(label).width > maxW && label.length > 3) label = label.slice(0, -2).trimEnd() + '…';
+      cx.fillText(label, R - 34, 0);
+      cx.restore();
+    }
+    // Brillo sutil
+    const grad = cx.createRadialGradient(R * 0.7, R * 0.6, R * 0.1, R, R, R);
+    grad.addColorStop(0, 'rgba(255,255,255,.18)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+    cx.beginPath(); cx.arc(R, R, R, 0, Math.PI * 2); cx.fillStyle = grad; cx.fill();
+  }
+
+  // Ángulo (rotación del canvas) para que el segmento idx quede bajo el puntero (arriba, -90°).
+  function targetRotationFor(idx) {
+    const n = wheelNames.length; const seg = (Math.PI * 2) / n;
+    const center = idx * seg + seg / 2;
+    const jitter = (Math.random() - 0.5) * seg * 0.7;
+    return -Math.PI / 2 - center + jitter;
+  }
+  const easeOut = t => 1 - Math.pow(1 - t, 4);
+
+  function spinTo(idx, duration = 5200) {
+    return new Promise(resolve => {
+      const n = wheelNames.length; const seg = (Math.PI * 2) / n;
+      const start = angle;
+      const turns = 6 + Math.floor(Math.random() * 3);
+      let target = targetRotationFor(idx);
+      // Normalizar para que gire varias vueltas hacia adelante
+      const base = start - (start % (Math.PI * 2));
+      target = base + turns * Math.PI * 2 + ((target % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      const total = target - start;
+      const t0 = performance.now();
+      let lastSeg = Math.floor(((-Math.PI / 2 - start) / seg));
+      spinning = true; $('wheelWrap').classList.add('spinning');
+      sWhoosh();
+      function frame(now) {
+        const t = Math.min(1, (now - t0) / duration);
+        angle = start + total * easeOut(t);
+        drawWheel(angle);
+        const curSeg = Math.floor(((-Math.PI / 2 - angle) / seg));
+        if (curSeg !== lastSeg) { lastSeg = curSeg; sTick(); const p = $('pointer'); p.classList.remove('kick'); void p.offsetWidth; p.classList.add('kick'); }
+        if (t < 1) requestAnimationFrame(frame); else { spinning = false; $('wheelWrap').classList.remove('spinning'); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // ---------------- Confeti ----------------
+  const cc = $('confetti'); const cctx = cc.getContext('2d');
+  function confetti(ms = 3200) {
+    cc.width = innerWidth * devicePixelRatio; cc.height = innerHeight * devicePixelRatio; cctx.scale(devicePixelRatio, devicePixelRatio);
+    const parts = Array.from({ length: 160 }, () => ({
+      x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.5,
+      w: 6 + Math.random() * 8, h: 8 + Math.random() * 10, c: COLORS[Math.floor(Math.random() * COLORS.length)],
+      vy: 2 + Math.random() * 3, vx: (Math.random() - 0.5) * 2, r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.25
+    }));
+    const t0 = performance.now();
+    function f(now) {
+      cctx.clearRect(0, 0, innerWidth, innerHeight);
+      parts.forEach(p => { p.y += p.vy; p.x += p.vx + Math.sin(now / 300 + p.r) * 0.6; p.r += p.vr; cctx.save(); cctx.translate(p.x, p.y); cctx.rotate(p.r); cctx.fillStyle = p.c; cctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); cctx.restore(); });
+      if (now - t0 < ms) requestAnimationFrame(f); else cctx.clearRect(0, 0, innerWidth, innerHeight);
+    }
+    requestAnimationFrame(f);
+  }
+
+  // ---------------- Flujo del jugador ----------------
+  let currentPlayer = null;
+
+  async function play() {
+    const raw = $('nameInput').value;
+    if (!norm(raw)) { setMsg('homeMsg', 'Escribe tu nombre para jugar.', 'err'); sError(); return; }
+    $('playBtn').disabled = true; setMsg('homeMsg', 'Buscando tu nombre…', 'info');
+    try { await fetchState(); } catch (e) { setMsg('homeMsg', 'No se pudo conectar. Revisa tu internet e intenta de nuevo.', 'err'); $('playBtn').disabled = false; sError(); return; }
+    const p = findParticipant(raw);
+    if (!p) { setMsg('homeMsg', 'Ese nombre no está en la lista. Pídele al administrador que te agregue o revisa cómo lo escribiste.', 'err'); $('playBtn').disabled = false; sError(); return; }
+    if (state.participants.length < 2) { setMsg('homeMsg', 'Aún no hay suficientes participantes para jugar.', 'err'); $('playBtn').disabled = false; sError(); return; }
+    currentPlayer = p; setMsg('homeMsg', '');
+    $('playBtn').disabled = false;
+    sClick();
+    if (state.assignments[p]) { showResult(state.assignments[p], true); return; }
+    // Preparar ruleta
+    wheelNames = availableReceivers().filter(r => r !== p);
+    if (!wheelNames.length) { setMsg('homeMsg', 'Ya no quedan personas disponibles. Habla con el administrador.', 'err'); return; }
+    $('whoName').textContent = p;
+    $('wheelSub').textContent = wheelNames.length === 1 ? 'Solo queda una persona disponible, pero la ruleta igual gira.' : `Quedan ${wheelNames.length} personas en la ruleta.`;
+    angle = -Math.PI / 2 - (Math.PI / wheelNames.length);
+    drawWheel(angle);
+    $('spinBtn').disabled = false; setMsg('wheelMsg', '');
+    show('s-wheel');
+  }
+
+  async function spin() {
+    if (spinning || !currentPlayer) return;
+    $('spinBtn').disabled = true; setMsg('wheelMsg', '');
+    ctx();
+    // Releer estado justo antes de girar para evitar choques entre jugadores.
+    try { await fetchState(); } catch (e) { setMsg('wheelMsg', 'Sin conexión. Intenta de nuevo.', 'err'); $('spinBtn').disabled = false; sError(); return; }
+    if (state.assignments[currentPlayer]) { showResult(state.assignments[currentPlayer], true); return; }
+    const opts = validOptions(currentPlayer);
+    const remaining = availableReceivers().filter(r => r !== currentPlayer);
+    if (!opts.length) { setMsg('wheelMsg', 'No hay una asignación posible. Habla con el administrador.', 'err'); sError(); return; }
+    const chosen = opts[Math.floor(Math.random() * opts.length)];
+    // Si la lista cambió desde que se dibujó, redibujar.
+    if (remaining.join('|') !== wheelNames.join('|')) { wheelNames = remaining; drawWheel(angle); }
+    // Guardar primero, luego girar: así el resultado es definitivo aunque se cierre la página.
+    state.assignments[currentPlayer] = chosen;
+    try { await saveState(); } catch (e) { delete state.assignments[currentPlayer]; setMsg('wheelMsg', 'No se pudo guardar el resultado. Intenta de nuevo.', 'err'); $('spinBtn').disabled = false; sError(); return; }
+    const idx = wheelNames.indexOf(chosen);
+    await spinTo(idx);
+    await sleep(350);
+    showResult(chosen, false);
+  }
+
+  function showResult(name, again) {
+    $('resultEyebrow').textContent = again ? 'Ya giraste antes. Tu amigo secreto es' : 'Tu amigo secreto es';
+    $('resultName').textContent = name;
+    show('s-result');
+    if (!again) { sFanfare(); confetti(); }
+  }
+
+  // ---------------- Admin ----------------
+  function renderAdmin() {
+    const list = $('pList'); list.innerHTML = '';
+    const done = Object.keys(state.assignments).length;
+    $('stTotal').textContent = state.participants.length; $('stDone').textContent = done; $('stLeft').textContent = state.participants.length - done;
+    if (!state.participants.length) { list.innerHTML = '<li class="empty" style="display:block">Todavía no hay participantes. Agrega el primero arriba.</li>'; return; }
+    const taken = new Set(Object.values(state.assignments));
+    state.participants.forEach(p => {
+      const li = document.createElement('li');
+      const played = p in state.assignments;
+      const locked = played || taken.has(p);
+      li.innerHTML = `<span>${escapeHtml(p)}</span><span class="st ${played ? 'done' : ''}">${played ? 'Ya giró' : 'Pendiente'}</span><button class="del" title="${locked ? 'No se puede quitar: ya participa en una asignación' : 'Quitar'}" aria-label="Quitar" ${locked ? 'disabled' : ''}>✕</button>`;
+      li.querySelector('.del').addEventListener('click', () => removeParticipant(p));
+      list.appendChild(li);
+    });
+  }
+  const escapeHtml = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  async function persistAdmin(okText) {
+    setMsg('adminMsg', 'Guardando…', 'info');
+    try { await saveState(); setMsg('adminMsg', okText, 'ok'); }
+    catch (e) { setMsg('adminMsg', 'No se pudo guardar en línea. Revisa la conexión e inténtalo de nuevo.', 'err'); sError(); }
+    renderAdmin();
+  }
+  async function addParticipant() {
+    const raw = $('newName').value.trim().replace(/\s+/g, ' ');
+    if (!raw) { setMsg('adminMsg', 'Escribe un nombre.', 'err'); return; }
+    if (findParticipant(raw)) { setMsg('adminMsg', `"${raw}" ya está en la lista.`, 'err'); sError(); return; }
+    state.participants.push(raw); $('newName').value = ''; $('newName').focus(); sClick();
+    renderAdmin();
+    await persistAdmin(`${raw} agregado.`);
+  }
+  async function removeParticipant(p) {
+    state.participants = state.participants.filter(x => x !== p);
+    renderAdmin();
+    await persistAdmin(`${p} quitado.`);
+  }
+  async function resetGame() {
+    if (!confirm('¿Reiniciar el juego? Se borrarán todos los giros. Los nombres se conservan.')) return;
+    if (!confirm('¿Seguro? Esta acción no se puede deshacer.')) return;
+    state.assignments = {};
+    renderAdmin();
+    await persistAdmin('Juego reiniciado. Todos pueden volver a girar.');
+  }
+  async function openAdmin() {
+    setMsg('adminMsg', 'Cargando…', 'info');
+    show('s-admin');
+    try { await fetchState(); setMsg('adminMsg', ''); } catch (e) { setMsg('adminMsg', 'No se pudo cargar desde internet. Mostrando la última copia local.', 'err'); }
+    renderAdmin();
+  }
+
+  // ---------------- Eventos ----------------
+  $('playBtn').addEventListener('click', play);
+  $('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') play(); });
+  $('spinBtn').addEventListener('click', spin);
+  $('backHome').addEventListener('click', () => { if (!spinning) show('s-home'); });
+  $('resultHome').addEventListener('click', () => { $('nameInput').value = ''; currentPlayer = null; show('s-home'); });
+  $('adminLink').addEventListener('click', () => { $('pinInput').value = ''; setMsg('loginMsg', ''); show('s-login'); setTimeout(() => $('pinInput').focus(), 100); });
+  $('loginBack').addEventListener('click', () => show('s-home'));
+  function login() {
+    if ($('pinInput').value === ADMIN_PIN) { sClick(); openAdmin(); }
+    else { setMsg('loginMsg', 'PIN incorrecto.', 'err'); sError(); $('pinInput').select(); }
+  }
+  $('loginBtn').addEventListener('click', login);
+  $('pinInput').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  $('addBtn').addEventListener('click', addParticipant);
+  $('newName').addEventListener('keydown', e => { if (e.key === 'Enter') addParticipant(); });
+  $('resetBtn').addEventListener('click', resetGame);
+  $('adminBack').addEventListener('click', () => show('s-home'));
+
+  // ---------------- Inicio ----------------
+  loadLocal();
+  fetchState().catch(() => toast('Sin conexión: se usará la última copia guardada.'));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (wheelNames.length) drawWheel(angle); });
+})();
+</script>
+</body>
+</html>
